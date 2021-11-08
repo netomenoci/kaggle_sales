@@ -15,7 +15,7 @@ class MeanEncoding:
             .reset_index()
         )
 
-    def predict(self, df: pd.DataFrame, mode: Literal["train", "test"]):
+    def transform(self, df: pd.DataFrame, mode: Literal["train", "test"]):
         if mode == "train":
             cumsum = (
                 df.groupby(self.categorical_features)[self.target_name].cumsum()
@@ -58,7 +58,7 @@ class PreviousFeatures:
         df_shifted = df_shifted.rename(columns={self.feat_name: self.new_feat_name})
         self.df_shifted = df_shifted
 
-    def predict(self, df: pd.DataFrame):
+    def transform(self, df: pd.DataFrame):
         assert hasattr(
             self, "df_shifted"
         ), "Model hasn't been fitted yet. Please fit it before predicting"
@@ -107,38 +107,13 @@ class PastAggregations:
         self.new_columns = rename_dict.values()
         self.agg_df = agg_df
 
-    def predict(
+    def transform(
         self,
         df: pd.DataFrame,
     ):
         df = df.merge(self.agg_df, how="left", on=self.groupby_cols)
 
         return df[self.new_columns]
-
-
-def add_aggregations(
-    df: pd.DataFrame,
-    raw_sales: pd.DataFrame,
-    groupby_cols: List[str],
-    target_name: str,
-    aggregations: List[str] = ["min", "max", "mean"],
-    k=1,
-    month_feat_name: str = "date_block_num",
-) -> pd.DataFrame:
-    agg_df = (
-        raw_sales.groupby(groupby_cols)[target_name].agg(aggregations).reset_index()
-    )
-    post_fix = "-".join([x for x in groupby_cols if x not in month_feat_name])
-    rename_dict = {
-        agg: target_name + "_" + agg + "-by-" + post_fix + "-" + str(k)
-        for agg in aggregations
-    }
-    agg_df = agg_df.rename(columns=rename_dict)
-    agg_df[month_feat_name] += k
-
-    df = df.merge(agg_df, how="left", on=groupby_cols)
-
-    return df
 
 
 def compare_sets(set1, set2):
